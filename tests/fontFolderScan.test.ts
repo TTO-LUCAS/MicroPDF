@@ -292,3 +292,67 @@ describe('findFontFiles — 글리프 조회가 던지는 파일', () => {
     expect(result.reasons.get(k('Nexa', 'Heavy'))).toBe('unchecked')
   })
 })
+
+describe('findFontFiles — name-table pre-check', () => {
+  /** A real SFNT header + 'name' table whose family is `family`, served through File.slice */
+  function headerBytes(family: string): Uint8Array {
+    const text = [...family].flatMap((c) => [0, c.charCodeAt(0)])
+    const table = new Uint8Array(6 + 12 + text.length)
+    const tv = new DataView(table.buffer)
+    tv.setUint16(2, 1)
+    tv.setUint16(4, 18)
+    tv.setUint16(6, 3)
+    tv.setUint16(8, 1)
+    tv.setUint16(12, 1)
+    tv.setUint16(14, text.length)
+    table.set(text, 18)
+    const out = new Uint8Array(28 + table.length)
+    const v = new DataView(out.buffer)
+    v.setUint32(0, 0x00010000)
+    v.setUint16(4, 1)
+    v.setUint32(12, 0x6e616d65)
+    v.setUint32(20, 28)
+    v.setUint32(24, table.length)
+    out.set(table, 28)
+    return out
+  }
+
+  function headerFile(name: string, faces: FakeFace[], path = name): File {
+    const header = headerBytes(faces[0].family)
+    return Object.assign(fakeFile(name, faces), {
+      webkitRelativePath: path,
+      slice: (start: number, end: number) =>
+        ({ arrayBuffer: async () => header.slice(start, end).buffer }) as Blob
+    }) as File
+  }
+
+  it('finds a font past the old file limit when its file name gives nothing away', async () => {
+    const others = Array.from({ length: 20 }, (_, i) => headerFile(`x${i}.ttf`, [regular('Other')]))
+    const hidden = headerFile('NK-Rg.otf', [regular('Nuckle')])
+    const result = await findFontFiles(
+      [...others, hidden],
+      [usage('Nuckle', 'Regular', 400)],
+      progress,
+      {
+        fileCap: 2
+      }
+    )
+    expect(result.found.get(k('Nuckle', 'Regular'))?.fileName).toBe('NK-Rg.otf')
+    expect(result.unread).toBe(0)
+  })
+
+  it('counts files it skipped by name as checked, so a missing font is reported as missing', async () => {
+    const others = Array.from({ length: 5 }, (_, i) => headerFile(`x${i}.ttf`, [regular('Other')]))
+    const result = await findFontFiles(others, [usage('Nexa', 'Heavy', 900)], progress, {
+      fileCap: 2
+    })
+    expect(result.unread).toBe(0)
+    expect(result.reasons.get(k('Nexa', 'Heavy'))).toBe('family-missing')
+  })
+
+  it('treats a folder named after the family as a name match', async () => {
+    const file = headerFile('Rg.otf', [regular('Nuckle')], 'Fonts/Nuckle/Rg.otf')
+    const result = await findFontFiles([file], [usage('Nuckle', 'Regular', 400)], progress)
+    expect(result.found.has(k('Nuckle', 'Regular'))).toBe(true)
+  })
+})

@@ -26,6 +26,7 @@ import {
   sameFamily
 } from '../lib/fontFolder'
 import { fontKey } from '../lib/fontInventory'
+import { readFamilyNames } from '../lib/fontNames'
 import { FontUsage } from '../lib/types'
 import { collectionFaces, createProbe, factsOf, FontProbe, namesOf } from './fontkitAdapter'
 
@@ -93,6 +94,49 @@ export function isScanIncomplete(result: ScanResult): boolean {
 
 function isFontFile(file: File): boolean {
   return /\.(ttf|otf|ttc|otc)$/i.test(file.name)
+}
+
+/** Header reads in flight at once — enough to keep the disk busy, few enough to stay light */
+const HEADER_CONCURRENCY = 16
+
+function pathOf(file: File): string {
+  const path = (file as File & { webkitRelativePath?: string }).webkitRelativePath
+  return typeof path === 'string' && path !== '' ? path : file.name
+}
+
+/** Family names from the file's name table, or null when the header can't be read */
+async function headerFamilies(file: File): Promise<string[] | null> {
+  if (typeof file.slice !== 'function') return null
+  try {
+    return await readFamilyNames(
+      async (offset, length) =>
+        new Uint8Array(await file.slice(offset, offset + length).arrayBuffer())
+    )
+  } catch {
+    return null
+  }
+}
+
+async function mapLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  work: (item: T) => Promise<R>,
+  onDone: (done: number) => void
+): Promise<R[]> {
+  const out = new Array<R>(items.length)
+  let next = 0
+  let done = 0
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const at = next
+      next += 1
+      out[at] = await work(items[at])
+      done += 1
+      if (done % 100 === 0 || done === items.length) onDone(done)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return out
 }
 
 /** 파일 안의 face 하나 — 컬렉션이면 여럿, 단일 폰트면 하나 */
@@ -223,21 +267,47 @@ export async function findFontFiles(
   const retainedCap = options.retainedBytesCap ?? RETAINED_BYTES_CAP
 
   const fontFiles = files.filter(isFontFile)
+  // Folder names count too: "Nuckle/NK-Rg.otf" belongs to Nuckle even though the file name doesn't say so
   const likely = fontFiles.filter((file) =>
-    missing.some((font) => looksLikeFamily(file.name, font.family))
+    missing.some((font) => looksLikeFamily(pathOf(file), font.family))
   )
-  const restAll = fontFiles.filter((file) => !likely.includes(file))
-  const restSmall = restAll.filter(
+  const likelySet = new Set(likely)
+  const restAll = fontFiles.filter((file) => !likelySet.has(file))
+
+  // Every other file: read only its name table. Files whose names match are read whole,
+  // whatever their size. Files whose header can't be read fall back to the old capped rule.
+  const named: File[] = []
+  const unknown: File[] = []
+  const verdicts = await mapLimit(
+    restAll,
+    HEADER_CONCURRENCY,
+    async (file) => {
+      const names = await headerFamilies(file)
+      if (names === null) return 'unknown' as const
+      return names.some((name) =>
+        missing.some((font) => sameFamily(name, font.family) || looksLikeFamily(name, font.family))
+      )
+        ? ('named' as const)
+        : ('other' as const)
+    },
+    (done) => onProgress(done, restAll.length)
+  )
+  restAll.forEach((file, index) => {
+    if (verdicts[index] === 'named') named.push(file)
+    else if (verdicts[index] === 'unknown') unknown.push(file)
+  })
+
+  const unknownSmall = unknown.filter(
     (file) => !(typeof file.size === 'number' && file.size > restBytesCap)
   )
-  const rest = restSmall.slice(0, fileCap)
+  const rest = unknownSmall.slice(0, fileCap)
 
   const result: ScanResult = {
     found: new Map(),
     reasons: new Map(),
     unreadable: 0,
     brokenFaces: 0,
-    unread: restAll.length - rest.length,
+    unread: unknown.length - rest.length,
     memoryCapped: false
   }
   const evidence = new Map<string, Evidence>()
@@ -259,7 +329,8 @@ export async function findFontFiles(
   const alternativesFor = (evidenceFor: Evidence, tier: MatchTier): number =>
     evidenceFor.usableByTier.slice(0, tier + 1).reduce((sum, n) => sum + n, 0) - 1
 
-  const queue = [...likely, ...rest]
+  const queue = [...likely, ...named, ...rest]
+  const mustRead = likely.length + named.length
   const total = queue.length
   let done = 0
   let retained = 0
@@ -365,7 +436,7 @@ export async function findFontFiles(
 
   for (let at = 0; at < queue.length; at += 1) {
     // 이름이 맞는 파일은 다 본다(더 나은 판이 있을 수 있다). 나머지는 다 찾았으면 그만 읽는다
-    if (at >= likely.length && result.found.size === missing.length) break
+    if (at >= mustRead && result.found.size === missing.length) break
 
     const file = queue[at]
     let bytes: Uint8Array
