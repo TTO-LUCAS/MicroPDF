@@ -1,6 +1,12 @@
-# Featherweight – Compressed PDF Export with Real Fonts
+# MicroPDF
 
-![Featherweight — compressed PDF export with real fonts](docs/brand/cover-1920x960.png?v=6)
+POMPOM's Figma plugin for exporting proposal decks as light PDFs with real embedded fonts.
+
+MicroPDF is based on [Featherweight](https://github.com/coffeequickly/featherweight) by coffeequickly,
+used under the MIT licence (see `LICENSE`). The rest of this README is Featherweight's own documentation
+and still describes the plugin by that name.
+
+# Featherweight – Compressed PDF Export with Real Fonts
 
 A Figma plugin that exports frames as **light PDFs with real embedded fonts**.
 
