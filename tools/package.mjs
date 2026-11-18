@@ -53,7 +53,7 @@ await Promise.all(
 
 await writeFile(
   join(stage, 'INSTALL.md'),
-  `# Featherweight ${pkg.version}
+  `# MicroPDF ${pkg.version}
 
 Export Figma frames as light PDFs with real embedded fonts — text stays
 selectable, searchable and ATS-readable, and the file gets much smaller.
@@ -70,8 +70,8 @@ This zip is a development build, for trying an unreleased version.
 2. Figma desktop app → menu → Plugins → Development → **Import plugin from manifest…**
 3. Pick \`manifest.json\` in this folder
 
-Run it from Plugins → Development → Featherweight, or hit \`Cmd + /\` and search
-for "Featherweight".
+Run it from Plugins → Development → MicroPDF, or hit \`Cmd + /\` and search
+for "MicroPDF".
 
 ## Using it
 

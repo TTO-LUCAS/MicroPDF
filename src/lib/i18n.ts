@@ -294,7 +294,7 @@ const MESSAGES = {
     ko: '보이는 영역만 저장'
   },
   'settings.cropToVisibleSays': {
-    en: 'When only part of an image is visible, Featherweight stores just that area if every placement stays equally sharp and the PDF becomes smaller. When off, the full image is downscaled.',
+    en: 'When only part of an image is visible, MicroPDF stores just that area if every placement stays equally sharp and the PDF becomes smaller. When off, the full image is downscaled.',
     ko: '원본의 일부만 보이는 이미지는, 모든 사용 위치의 선명도를 유지하면서 PDF가 더 작아지는 경우에만 보이는 영역만 저장합니다. 끄면 전체 이미지를 축소합니다.'
   },
   'settings.outlineAllSays': {
@@ -1034,7 +1034,7 @@ const MESSAGES = {
   },
   'fontFile.bitmapOnly': {
     en: 'This font file permits bitmap embedding only, which is not supported. Select another font file.',
-    ko: '이 폰트 파일은 비트맵 방식의 포함만 허용하지만 Featherweight는 이를 지원하지 않습니다. 다른 폰트 파일을 선택하세요.'
+    ko: '이 폰트 파일은 비트맵 방식의 포함만 허용하지만 MicroPDF는 이를 지원하지 않습니다. 다른 폰트 파일을 선택하세요.'
   },
   'fonts.fileVariable': {
     en: 'Variable font files are not supported. Replace this file with a static font file for {slotStyle}.',

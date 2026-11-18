@@ -94,7 +94,7 @@ export function OptionsPanel({
         </Button>
         <div class="optionsVersion">
           <Text>
-            <Muted>Featherweight v{version}</Muted>
+            <Muted>MicroPDF v{version}</Muted>
           </Text>
         </div>
       </div>

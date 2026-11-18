@@ -84,7 +84,7 @@ export type OutlineCost = {
   vectorBytes: number
 }
 
-export const PRODUCER = 'Featherweight'
+export const PRODUCER = 'MicroPDF'
 
 /**
  * 부분 PDF 들을 index 순으로 이어 붙인다.

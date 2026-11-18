@@ -285,7 +285,7 @@ function page(uiScript, query) {
   const width = Number(query.get('w') ?? 400)
   const height = Number(query.get('h') ?? 560)
   return `<!doctype html>
-<html><head><meta charset="utf-8"><title>Featherweight UI preview</title>
+<html><head><meta charset="utf-8"><title>MicroPDF UI preview</title>
 <style>
   body { margin: 0; font: 12px -apple-system, sans-serif; background: #e5e5e5; }
   .bar { padding: 8px 12px; background: #fff; border-bottom: 1px solid #ddd; display: flex; gap: 12px; align-items: center; }
@@ -294,7 +294,7 @@ function page(uiScript, query) {
 </style></head>
 <body>
   <div class="bar">
-    <strong>Featherweight UI preview</strong>
+    <strong>MicroPDF UI preview</strong>
     <label>폭 <input id="w" type="number" value="400" style="width:64px"></label>
     <label>높이 <input id="h" type="number" value="560" style="width:64px"></label>
     <button id="apply">적용</button>
